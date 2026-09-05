@@ -48,6 +48,12 @@ public sealed class GelatoManager(
     public const string SeedFileContent =
         "This is a seed file created by Gelato so that library scans are triggered. Do not remove.";
 
+    /// <summary>
+    /// Timeout for the initial metadata fetch. If the fetch takes longer than this, the item
+    /// will be queued for a refresh instead of waiting indefinitely.
+    /// </summary>
+    private static readonly TimeSpan InsertRefreshTimeout = TimeSpan.FromSeconds(8);
+
     private readonly ILogger<GelatoManager> _log = loggerFactory.CreateLogger<GelatoManager>();
 
     private int GetHttpPort()
@@ -459,7 +465,27 @@ public sealed class GelatoManager(
             }
             else
             {
-                _ = provider.RefreshFullItem(baseItem, options, ct);
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                timeout.CancelAfter(InsertRefreshTimeout);
+
+                try
+                {
+                    await provider
+                        .RefreshFullItem(baseItem, options, timeout.Token)
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                {
+                    provider.QueueRefresh(baseItem.Id, options, RefreshPriority.High);
+                }
+                catch (Exception ex)
+                {
+                    _log.LogWarning(
+                        ex,
+                        "InsertMeta: full refresh failed for {Name}",
+                        baseItem.Name
+                    );
+                }
             }
         }
         _log.LogDebug("inserted new {Kind}: {Name}", baseItem.GetBaseItemKind(), baseItem.Name);
