@@ -120,7 +120,8 @@ public sealed class MediaSourceManagerDecorator(
 
         var allowSync = ctx.IsInsertableAction() && userId != Guid.Empty;
         var video = item as Video;
-        var cacheKey = (video?.PrimaryVersionId ?? item.Id).ToString();
+        var baseItemId = (video?.PrimaryVersionId ?? item.Id);
+        var cacheKey = baseItemId.ToString();
 
         if (userId != Guid.Empty)
         {
@@ -183,7 +184,7 @@ public sealed class MediaSourceManagerDecorator(
                                 .ConfigureAwait(false);
                             if (count > 0)
                             {
-                                manager.SetStreamSync(cacheKey);
+                                manager.SetStreamSync(baseItemId, cacheKey);
                             }
                         }
                         catch (Exception ex)
