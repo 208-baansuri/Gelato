@@ -409,6 +409,23 @@ public struct StremioSubtitle
     public string? Title { get; set; }
     public string? Moviehash { get; set; }
 
+    [JsonPropertyName("subtitleFileName")]
+    public string? SubtitleFileName { get; set; }
+
+    [JsonPropertyName("movieReleaseName")]
+    public string? MovieReleaseName { get; set; }
+
+    [JsonPropertyName("releaseGroup")]
+    public string? ReleaseGroup { get; set; }
+
+    [JsonPropertyName("releaseFormat")]
+    public string? ReleaseFormat { get; set; }
+
+    [JsonPropertyName("fpsMilli")]
+    public int? FpsMilli { get; set; }
+
+
+
     public string? TwoLetterISOLanguageName()
     {
         var lng = Lang ?? LangCode;

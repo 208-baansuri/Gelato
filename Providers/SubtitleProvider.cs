@@ -228,13 +228,39 @@ namespace Gelato.Providers
                     scored[0].Sub.Title ?? "(no title)"
                 );
 
-            return scored.Select(x => new RemoteSubtitleInfo
+            return scored.Select((x, i) =>
             {
-                Id = x.Sub.Id,
-                Name = Uri.UnescapeDataString(x.Sub.Title ?? ""),
-                ProviderName = Name,
-                Format = GuessSubtitleCodec(x.Sub.Url),
-                ThreeLetterISOLanguageName = request.Language,
+                var derivedName = x.Sub.Title;
+                if (string.IsNullOrWhiteSpace(derivedName)) derivedName = x.Sub.SubtitleFileName;
+                if (string.IsNullOrWhiteSpace(derivedName)) derivedName = x.Sub.MovieReleaseName;
+                if (string.IsNullOrWhiteSpace(derivedName) && x.Sub.Id != null && x.Sub.Id.Length > 15) derivedName = x.Sub.Id;
+                if (string.IsNullOrWhiteSpace(derivedName)) derivedName = $"Subtitle {i + 1} ({x.Sub.TwoLetterISOLanguageName()?.ToUpperInvariant() ?? "Unknown"})";
+
+                derivedName = Uri.UnescapeDataString(derivedName ?? "");
+
+                var isHI = derivedName.Contains(".HI.", StringComparison.OrdinalIgnoreCase)
+                           || derivedName.Contains(".SDH.", StringComparison.OrdinalIgnoreCase)
+                           || derivedName.EndsWith(".HI", StringComparison.OrdinalIgnoreCase)
+                           || derivedName.EndsWith(".SDH", StringComparison.OrdinalIgnoreCase)
+                           || derivedName.Contains("-HI", StringComparison.OrdinalIgnoreCase)
+                           || derivedName.Contains("-SDH", StringComparison.OrdinalIgnoreCase);
+
+                var commentParts = new List<string>();
+                if (!string.IsNullOrWhiteSpace(x.Sub.ReleaseFormat)) commentParts.Add(x.Sub.ReleaseFormat);
+                if (!string.IsNullOrWhiteSpace(x.Sub.ReleaseGroup)) commentParts.Add(x.Sub.ReleaseGroup);
+                // fps is mapped to FrameRate property below
+
+                return new RemoteSubtitleInfo
+                {
+                    Id = x.Sub.Id,
+                    Name = derivedName,
+                    ProviderName = Name,
+                    Format = GuessSubtitleCodec(x.Sub.Url),
+                    ThreeLetterISOLanguageName = request.Language,
+                    Comment = commentParts.Count > 0 ? string.Join(" / ", commentParts) : null,
+                    IsHashMatch = isHI,
+                    FrameRate = x.Sub.FpsMilli > 0 ? (float)(x.Sub.FpsMilli / 1000.0) : null
+                };
             });
         }
 
